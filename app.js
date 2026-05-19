@@ -1,6 +1,7 @@
 // ============================================
-// CONFIG
+// CONFIG & CONSTANTS
 // ============================================
+const MAX_LENGTH = 20;
 
 const RULES_CONFIG = [
   {
@@ -47,8 +48,7 @@ const RULES_CONFIG = [
       { id: "4c", label: "+!" },
       { id: "4d", label: "+!!" },
       { id: "4e", label: "+#" },
-      { id: "4f", label: "+$" },
-      { id: "4g", label: "+." }
+      { id: "4f", label: "+$" }
     ]
   },
   {
@@ -115,9 +115,9 @@ const RULES_CONFIG = [
     id: 11,
     name: "🔗 Ghép & Biến đổi",
     rules: [
-      { id: "11a", label: "Thêm số cuối" },
-      { id: "11b", label: "Thêm số đầu" },
-      { id: "11c", label: "CamelCase" }
+      { id: "11a", label: "Thêm số cuối (111→1111)" },
+      { id: "11b", label: "Thêm số đầu (111→1111)" },
+      { id: "11c", label: "CamelCase (hello→Hello)" }
     ]
   },
   {
@@ -131,14 +131,61 @@ const RULES_CONFIG = [
   }
 ];
 
+const LEET_MAP = {
+  a: ["@", "4"],
+  o: ["0"],
+  s: ["$", "5"],
+  e: ["3"],
+  i: ["1"],
+  t: ["7"]
+};
+
 let lastResult = "";
 let allResults = new Map();
 let lastData = null;
 let isProcessing = false;
+let shouldStop = false;
 
 // ============================================
 // UTILITY FUNCTIONS
 // ============================================
+
+function tokenize(pwd) {
+  return pwd.match(/[A-Za-z]+|\d+|[^A-Za-z0-9]/g) || [];
+}
+
+function isPhoneNumber(str) {
+  return /^0\d{9,10}$/.test(str.replace(/\D/g, ""));
+}
+
+function validVariant(variant, original) {
+  if (!variant) return false;
+  if (variant === original) return false;
+  if (variant.length > MAX_LENGTH) return false;
+  if (hasEntropyIssue(variant)) return false;
+  return true;
+}
+
+/**
+ * ✅ FIX: Better entropy check
+ * Detects: aaaa, 1111, abcabc, 123123, qwertyqwerty
+ */
+function hasEntropyIssue(str) {
+  if (/^(.)\1{3,}$/.test(str)) return true;
+  
+  for (let len = 1; len <= str.length / 2; len++) {
+    const pattern = str.substring(0, len);
+    let expected = "";
+    for (let i = 0; i < str.length; i += len) {
+      expected += pattern;
+    }
+    if (str === expected.substring(0, str.length) && str.length >= len * 2) {
+      return true;
+    }
+  }
+  
+  return false;
+}
 
 function showToast(message, type = "info") {
   const toast = document.createElement("div");
@@ -150,6 +197,280 @@ function showToast(message, type = "info") {
     toast.classList.add("hide");
     setTimeout(() => toast.remove(), 300);
   }, 3000);
+}
+
+function updateProgress(current, total) {
+  const percent = Math.round((current / total) * 100);
+  document.getElementById("progressBar").style.width = percent + "%";
+  document.getElementById("progressPercent").textContent = percent + "%";
+}
+
+// ============================================
+// TRANSFORMATION RULES
+// ============================================
+
+function rule_1a(t) { return [t.join("").toLowerCase()]; }
+function rule_1b(t) { return [t.join("").toUpperCase()]; }
+
+function rule_1c(t) {
+  const str = t.join("");
+  for (let i = 0; i < str.length; i++) {
+    if (/[a-zA-Z]/.test(str[i])) {
+      return [str.substring(0, i) + str[i].toUpperCase() + str.substring(i + 1)];
+    }
+  }
+  return [];
+}
+
+function rule_2a(t) { return [t.join("") + "123"]; }
+function rule_2b(t) { return [t.join("") + "1234"]; }
+function rule_2c(t) { return [t.join("") + "12345"]; }
+function rule_2d(t) { return [t.join("") + "123456"]; }
+function rule_2e(t) { return [t.join("") + "1234567"]; }
+function rule_2f(t) { return [t.join("") + "12345678"]; }
+function rule_2g(t) { return [t.join("") + "123456789"]; }
+
+function rule_3a(t) { return [t.join("") + "1990"]; }
+function rule_3b(t) { return [t.join("") + "2000"]; }
+function rule_3c(t) { return [t.join("") + "2010"]; }
+function rule_3d(t) { return [t.join("") + "2020"]; }
+function rule_3e(t) { return [t.join("") + "2024"]; }
+function rule_3f(t) { return [t.join("") + "90"]; }
+function rule_3g(t) { return [t.join("") + "95"]; }
+
+function rule_4a(t) { return [t.join("") + "@"]; }
+function rule_4b(t) { return [t.join("") + "@@"]; }
+function rule_4c(t) { return [t.join("") + "!"]; }
+function rule_4d(t) { return [t.join("") + "!!"]; }
+function rule_4e(t) { return [t.join("") + "#"]; }
+function rule_4f(t) { return [t.join("") + "$"]; }
+
+function rule_5a(t) { return [t.join("") + "vip"]; }
+function rule_5b(t) { return [t.join("") + "pro"]; }
+function rule_5c(t) { return [t.join("") + "cute"]; }
+function rule_5d(t) { return [t.join("") + "love"]; }
+function rule_5e(t) { return [t.join("") + "baby"]; }
+function rule_5f(t) { return [t.join("") + "hihi"]; }
+function rule_5g(t) { return [t.join("") + "kaka"]; }
+
+function rule_6a(t) { return [t.join("").replace(/[aA]/g, "@")]; }
+function rule_6b(t) { return [t.join("").replace(/[oO]/g, "0")]; }
+function rule_6c(t) { return [t.join("").replace(/[iI]/g, "1")]; }
+function rule_6d(t) { return [t.join("").replace(/[eE]/g, "3")]; }
+function rule_6e(t) { return [t.join("").replace(/[sS]/g, "$")]; }
+function rule_6f(t) { return [t.join("").replace(/[tT]/g, "7")]; }
+
+function rule_7a(t) {
+  const w = t.join("");
+  const m = w.match(/^([A-Za-z]+)(\d+)$/) || w.match(/^(\d+)([A-Za-z]+)$/);
+  if (m) {
+    const letters = /[a-zA-Z]/.test(m[1]) ? m[1] : m[2];
+    const digits = /\d/.test(m[1]) ? m[1] : m[2];
+    return [letters + "_" + digits];
+  }
+  return [];
+}
+
+function rule_7b(t) {
+  const w = t.join("");
+  const m = w.match(/^([A-Za-z]+)(\d+)$/) || w.match(/^(\d+)([A-Za-z]+)$/);
+  if (m) {
+    const letters = /[a-zA-Z]/.test(m[1]) ? m[1] : m[2];
+    const digits = /\d/.test(m[1]) ? m[1] : m[2];
+    return [letters + "-" + digits];
+  }
+  return [];
+}
+
+function rule_7c(t) {
+  const w = t.join("");
+  const m = w.match(/^([A-Za-z]+)(\d+)$/) || w.match(/^(\d+)([A-Za-z]+)$/);
+  if (m) {
+    const letters = /[a-zA-Z]/.test(m[1]) ? m[1] : m[2];
+    const digits = /\d/.test(m[1]) ? m[1] : m[2];
+    return [letters + "." + digits];
+  }
+  return [];
+}
+
+function rule_8a(t) { return [t.join("").split("").reverse().join("")]; }
+
+function rule_8b(t) {
+  const w = t.join("");
+  const letters = w.match(/[A-Za-z]/g) || [];
+  const nonLetters = w.match(/[^A-Za-z]/g) || [];
+  return [letters.reverse().join("") + nonLetters.join("")];
+}
+
+function rule_9a(t) {
+  const w = t.join("");
+  if ((w.length * 2) > MAX_LENGTH) return [];
+  return [w + w];
+}
+
+function rule_9b(t) {
+  const w = t.join("");
+  if ((w.length * 2) > MAX_LENGTH) return [];
+  return [w + w];
+}
+
+function rule_10a(user) {
+  const base = user.split("@")[0];
+  return base ? [base + "123"] : [];
+}
+
+function rule_10b(user) {
+  const base = user.split("@")[0];
+  return base ? [base + "@"] : [];
+}
+
+function rule_10c(user) {
+  const base = user.split("@")[0];
+  return base ? [base + "1999"] : [];
+}
+
+function rule_10d(user) {
+  const base = user.split("@")[0];
+  return base ? [base + "@123"] : [];
+}
+
+function rule_11a(t) {
+  const w = t.join("");
+  const lastNum = w.match(/\d+$/);
+  if (lastNum) {
+    const num = lastNum[0];
+    const rest = w.substring(0, w.length - num.length);
+    return [rest + num + num.charAt(0)];
+  }
+  return [];
+}
+
+function rule_11b(t) {
+  const w = t.join("");
+  const firstNum = w.match(/^\d+/);
+  if (firstNum) {
+    const num = firstNum[0];
+    return [num + num.charAt(0) + w.substring(num.length)];
+  }
+  return [];
+}
+
+function rule_11c(t) {
+  const w = t.join("");
+  return [w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()];
+}
+
+function rule_12a(t) {
+  const w = t.join("");
+  if (isPhoneNumber(w)) {
+    return [w + "@"];
+  }
+  return [];
+}
+
+function rule_12b(t) {
+  const w = t.join("");
+  if (isPhoneNumber(w)) {
+    return [w + "123"];
+  }
+  return [];
+}
+
+function rule_12c(t) {
+  const w = t.join("");
+  if (isPhoneNumber(w)) {
+    return [w + "vip"];
+  }
+  return [];
+}
+
+const RULES_MAP = {
+  "1a": rule_1a, "1b": rule_1b, "1c": rule_1c,
+  "2a": rule_2a, "2b": rule_2b, "2c": rule_2c, "2d": rule_2d, "2e": rule_2e, "2f": rule_2f, "2g": rule_2g,
+  "3a": rule_3a, "3b": rule_3b, "3c": rule_3c, "3d": rule_3d, "3e": rule_3e, "3f": rule_3f, "3g": rule_3g,
+  "4a": rule_4a, "4b": rule_4b, "4c": rule_4c, "4d": rule_4d, "4e": rule_4e, "4f": rule_4f,
+  "5a": rule_5a, "5b": rule_5b, "5c": rule_5c, "5d": rule_5d, "5e": rule_5e, "5f": rule_5f, "5g": rule_5g,
+  "6a": rule_6a, "6b": rule_6b, "6c": rule_6c, "6d": rule_6d, "6e": rule_6e, "6f": rule_6f,
+  "7a": rule_7a, "7b": rule_7b, "7c": rule_7c,
+  "8a": rule_8a, "8b": rule_8b,
+  "9a": rule_9a, "9b": rule_9b,
+  "10a": rule_10a, "10b": rule_10b, "10c": rule_10c, "10d": rule_10d,
+  "11a": rule_11a, "11b": rule_11b, "11c": rule_11c,
+  "12a": rule_12a, "12b": rule_12b, "12c": rule_12c
+};
+
+// ============================================
+// ADVANCED MUTATIONS
+// ============================================
+
+function mutateWord(word) {
+  const results = new Set();
+  
+  function helper(str, index) {
+    results.add(str);
+    
+    for (let i = index; i < str.length; i++) {
+      const c = str[i].toLowerCase();
+      
+      if (LEET_MAP[c]) {
+        for (const rep of LEET_MAP[c]) {
+          helper(
+            str.substring(0, i) + rep + str.substring(i + 1),
+            i + 1
+          );
+        }
+      }
+    }
+  }
+  
+  helper(word, 0);
+  return Array.from(results);
+}
+
+/**
+ * ✅ Chain rules with proper limit
+ */
+async function applyRuleChain(base, user, selectedRules, depth, limit) {
+  const results = new Set([base]);
+  let currentLayer = [base];
+  
+  for (let layer = 0; layer < depth; layer++) {
+    if (isProcessing === false) break;
+    
+    const nextLayer = new Set();
+    
+    for (const pwd of currentLayer) {
+      const tokens = tokenize(pwd);
+      
+      for (const ruleId of selectedRules) {
+        if (results.size >= limit) break;
+        
+        const ruleFn = RULES_MAP[ruleId];
+        if (!ruleFn) continue;
+        
+        try {
+          const variants = ruleId.startsWith("10") ? ruleFn(user) : ruleFn(tokens);
+          const variantsArray = Array.isArray(variants) ? variants : [variants];
+          
+          for (const v of variantsArray) {
+            if (results.size >= limit) break;
+            if (validVariant(v, base)) {
+              results.add(v);
+              nextLayer.add(v);
+            }
+          }
+        } catch (e) {
+          console.error(`Error in rule ${ruleId}:`, e);
+        }
+      }
+    }
+    
+    currentLayer = Array.from(nextLayer);
+    if (currentLayer.length === 0) break;
+  }
+  
+  results.delete(base);
+  return Array.from(results);
 }
 
 // ============================================
@@ -208,9 +529,17 @@ function updateButtonStates() {
   
   document.getElementById("generateBasicBtn").disabled = !hasFile || !hasBasicRules;
   document.getElementById("generateAdvBtn").disabled = !hasFile || !hasAdvRules;
-  document.getElementById("clearBtn").disabled = lastResult === "";
+  document.getElementById("clearBasicBtn").disabled = lastResult === "";
   document.getElementById("downloadBtn").disabled = lastResult === "";
   document.getElementById("copyBtn").disabled = lastResult === "";
+}
+
+function switchTab(tab) {
+  document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(el => el.classList.remove("active"));
+  
+  document.getElementById(tab).classList.add("active");
+  event.target.classList.add("active");
 }
 
 function filterRules(tab) {
@@ -237,13 +566,9 @@ function setupFileUpload() {
   
   fileInput.addEventListener("change", handleFileSelect);
   
-  uploadArea.addEventListener("click", () => {
-    fileInput.click();
-  });
-  
   uploadArea.addEventListener("dragover", (e) => {
     e.preventDefault();
-    uploadArea.style.background = "rgba(102, 126, 234, 0.2)";
+    uploadArea.style.background = "#f0f2f5";
   });
   
   uploadArea.addEventListener("dragleave", () => {
@@ -269,9 +594,6 @@ function handleFileSelect() {
     const content = e.target.result;
     lastData = parseFileContent(content);
     document.getElementById("statsFile").textContent = lastData.length;
-    document.getElementById("recordCount").textContent = lastData.length;
-    document.getElementById("fileSize").textContent = (file.size / 1024).toFixed(1) + " KB";
-    document.getElementById("fileStats").style.display = "grid";
     updateButtonStates();
     showToast(`✅ Tải ${lastData.length} cặp dữ liệu thành công!`, "success");
   };
@@ -298,7 +620,7 @@ function parseFileContent(content) {
 }
 
 // ============================================
-// GENERATE VARIANTS
+// PROCESSING
 // ============================================
 
 async function generateVariants(mode) {
@@ -309,74 +631,153 @@ async function generateVariants(mode) {
   
   if (isProcessing) return;
   isProcessing = true;
+  shouldStop = false;
   
-  try {
-    let chosen = [];
-    let customPatterns = {};
+  document.getElementById("generateBasicBtn").disabled = true;
+  document.getElementById("generateAdvBtn").disabled = true;
+  document.getElementById("stopBtn").style.display = "inline-flex";
+  document.getElementById("progressSection").classList.add("active");
+  
+  let chosen = [];
+  
+  if (mode === "custom") {
+    // Handle custom patterns
+    const suffixes = document.getElementById("customSuffixes").value.split("\n").filter(x => x.trim());
+    const prefixes = document.getElementById("customPrefixes").value.split("\n").filter(x => x.trim());
+    const separators = document.getElementById("customSeparators").value.split("\n").filter(x => x.trim());
     
-    if (mode === "custom") {
-      customPatterns = {
-        suffixes: document.getElementById("customSuffixes").value.split("\n").filter(x => x.trim()),
-        prefixes: document.getElementById("customPrefixes").value.split("\n").filter(x => x.trim()),
-        separators: document.getElementById("customSeparators").value.split("\n").filter(x => x.trim())
-      };
-    } else {
-      const selector = mode === "basic" ? "#basicRulesContainer" : "#advancedRulesContainer";
-      chosen = Array.from(document.querySelectorAll(`${selector} input:checked`))
-        .map((c) => c.value);
-      
-      if (chosen.length === 0) {
-        showToast("❌ Vui lòng chọn ít nhất một quy tắc!", "error");
-        isProcessing = false;
-        return;
-      }
-    }
-    
-    const payload = {
-      mode: mode,
-      data: lastData,
-      rules: chosen,
-      customPatterns: customPatterns,
-      depth: parseInt(document.getElementById("mutationDepth").value),
-      maxResults: parseInt(document.getElementById("maxResults").value)
-    };
-    
-    const response = await fetch("/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Server error: ${response.status}`);
-    }
-    
-    const result = await response.json();
     allResults.clear();
     
-    result.variants.forEach(variant => {
-      allResults.set(variant, true);
-    });
+    for (const item of lastData) {
+      if (!isProcessing || shouldStop) break;
+      
+      const user = item.user;
+      const pass = item.pass;
+      
+      // Add suffixes
+      for (const suffix of suffixes) {
+        const variant = pass + suffix;
+        if (validVariant(variant, pass) && variant.length <= MAX_LENGTH) {
+          const key = `${user.toLowerCase()}:${variant}`;
+          allResults.set(key, true);
+        }
+      }
+      
+      // Add prefixes
+      for (const prefix of prefixes) {
+        const variant = prefix + pass;
+        if (validVariant(variant, pass) && variant.length <= MAX_LENGTH) {
+          const key = `${user.toLowerCase()}:${variant}`;
+          allResults.set(key, true);
+        }
+      }
+      
+      // Add separators
+      for (const sep of separators) {
+        const m = pass.match(/^([A-Za-z]+)(\d+)$/) || pass.match(/^(\d+)([A-Za-z]+)$/);
+        if (m) {
+          const letters = /[a-zA-Z]/.test(m[1]) ? m[1] : m[2];
+          const digits = /\d/.test(m[1]) ? m[1] : m[2];
+          const variant = letters + sep + digits;
+          if (validVariant(variant, pass) && variant.length <= MAX_LENGTH) {
+            const key = `${user.toLowerCase()}:${variant}`;
+            allResults.set(key, true);
+          }
+        }
+      }
+    }
+  } else {
+    const selector = mode === "basic" ? "#basicRulesContainer" : "#advancedRulesContainer";
+    chosen = Array.from(document.querySelectorAll(`${selector} input:checked`))
+      .map((c) => c.value);
     
-    displayResults();
+    if (chosen.length === 0) {
+      showToast("❌ Vui lòng chọn ít nhất một quy tắc!", "error");
+      isProcessing = false;
+      document.getElementById("generateBasicBtn").disabled = false;
+      document.getElementById("generateAdvBtn").disabled = false;
+      document.getElementById("stopBtn").style.display = "none";
+      document.getElementById("progressSection").classList.remove("active");
+      return;
+    }
     
-    const ratio = lastData.length > 0 ? (allResults.size / lastData.length).toFixed(1) : 0;
-    document.getElementById("statsVariants").textContent = allResults.size;
-    document.getElementById("statsRatio").textContent = ratio + "x";
-    document.getElementById("ratioCount").textContent = ratio + "x";
+    allResults.clear();
+    const chunkSize = parseInt(document.getElementById("chunkSize").value);
+    const maxResults = parseInt(document.getElementById("maxResults").value);
+    const depth = mode === "advanced" ? parseInt(document.getElementById("mutationDepth").value) : 1;
     
-    showToast(
-      `✅ Tạo ${allResults.size} variants từ ${lastData.length} cặp!`,
-      "success"
-    );
+    let totalProcessed = 0;
     
-  } catch (error) {
-    console.error("Error:", error);
-    showToast(`❌ Lỗi: ${error.message}`, "error");
-  } finally {
-    isProcessing = false;
-    updateButtonStates();
+    for (let i = 0; i < lastData.length; i += chunkSize) {
+      if (!isProcessing || shouldStop) break;
+      
+      const chunk = lastData.slice(i, i + chunkSize);
+      
+      for (const item of chunk) {
+        if (!isProcessing || shouldStop) break;
+        if (allResults.size >= maxResults) break;
+        
+        const origPass = item.pass;
+        const user = item.user;
+        
+        if (mode === "basic") {
+          const tokens = tokenize(origPass);
+          for (const ruleId of chosen) {
+            if (allResults.size >= maxResults) break;
+            
+            const ruleFn = RULES_MAP[ruleId];
+            if (!ruleFn) continue;
+            
+            try {
+              const variants = ruleId.startsWith("10") || ruleId.startsWith("12") ? ruleFn(user) : ruleFn(tokens);
+              const variantsArray = Array.isArray(variants) ? variants : [variants];
+              
+              for (const v of variantsArray) {
+                if (allResults.size >= maxResults) break;
+                if (validVariant(v, origPass)) {
+                  const key = `${user.toLowerCase()}:${v}`;
+                  allResults.set(key, true);
+                }
+              }
+            } catch (e) {
+              console.error(e);
+            }
+          }
+        } else {
+          const variants = await applyRuleChain(origPass, user, chosen, depth, maxResults);
+          
+          for (const v of variants) {
+            if (allResults.size >= maxResults) break;
+            const key = `${user.toLowerCase()}:${v}`;
+            allResults.set(key, true);
+          }
+        }
+        
+        totalProcessed++;
+      }
+      
+      updateProgress(totalProcessed, lastData.length);
+      await new Promise(r => setTimeout(r, 0));
+    }
   }
+  
+  displayResults();
+  const ratio = lastData.length > 0 ? (allResults.size / lastData.length).toFixed(1) : 0;
+  document.getElementById("statsVariants").textContent = allResults.size;
+  document.getElementById("statsRatio").textContent = ratio + "x";
+  
+  showToast(
+    `✅ Tạo ${allResults.size} variants từ ${lastData.length} cặp!`,
+    "success"
+  );
+  
+  isProcessing = false;
+  shouldStop = false;
+  document.getElementById("generateBasicBtn").disabled = false;
+  document.getElementById("generateAdvBtn").disabled = false;
+  document.getElementById("stopBtn").style.display = "none";
+  document.getElementById("progressSection").classList.remove("active");
+  updateButtonStates();
 }
 
 function displayResults() {
@@ -392,7 +793,11 @@ function displayResults() {
   document.getElementById("output").textContent = output || "Không có kết quả.";
   document.getElementById("count").textContent = items.length;
   document.getElementById("totalCount").textContent = allResults.size;
-  updateButtonStates();
+}
+
+function stopProcessing() {
+  shouldStop = true;
+  isProcessing = false;
 }
 
 // ============================================
@@ -460,33 +865,16 @@ function clearAll() {
   document.querySelectorAll(".rules input:checked").forEach((c) => {
     c.checked = false;
   });
-  document.getElementById("output").textContent = "Không có kết quả. Vui lòng tải file lên.";
+  document.getElementById("output").textContent = "Chưa có dữ liệu. Vui lòng tải file lên.";
   document.getElementById("count").textContent = "0";
   document.getElementById("totalCount").textContent = "0";
+  document.getElementById("progressBar").style.width = "0%";
   document.getElementById("statsFile").textContent = "0";
   document.getElementById("statsVariants").textContent = "0";
   document.getElementById("statsRatio").textContent = "0x";
-  document.getElementById("ratioCount").textContent = "0x";
-  document.getElementById("fileStats").style.display = "none";
   updateButtonStates();
   showToast("🗑️ Đã xóa tất cả dữ liệu!", "info");
 }
-
-// ============================================
-// TAB SWITCHING
-// ============================================
-
-document.querySelectorAll('.tab-button').forEach(button => {
-  button.addEventListener('click', () => {
-    const tabName = button.dataset.tab;
-    
-    document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-    
-    button.classList.add('active');
-    document.getElementById(tabName).classList.add('active');
-  });
-});
 
 // ============================================
 // INITIALIZATION
